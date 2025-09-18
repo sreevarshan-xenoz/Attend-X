@@ -14,6 +14,12 @@ window.Sidebar = () => { // export const Sidebar ku badhila window.Sidebar
       description: 'Overview & Analytics'
     },
     { 
+      label: 'Live Feed', 
+      icon: '📹', 
+      path: '/live-feed',
+      description: 'Real-time Recognition'
+    },
+    { 
       label: 'Manage Districts', 
       icon: '🧭', 
       path: '/manage-districts',

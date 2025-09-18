@@ -11,6 +11,7 @@ window.App = () => { // "export const App" ku badhila "window.App" nu maathitom
       React.createElement(Routes, null,
         React.createElement(Route, { path: '/', element: React.createElement(Navigate, { to: '/dashboard', replace: true }) }),
         React.createElement(Route, { path: '/dashboard', element: React.createElement(window.Dashboard) }), // window.Dashboard
+        React.createElement(Route, { path: '/live-feed', element: React.createElement(window.LiveFeedPage) }), // window.LiveFeedPage
         React.createElement(Route, { path: '/manage-districts', element: React.createElement(window.ManageDistricts) }), // window.ManageDistricts
         React.createElement(Route, { path: '/schools', element: React.createElement(window.Schools) }), // window.Schools
         React.createElement(Route, { path: '/reports', element: React.createElement(window.ReportsAnalytics) }), // window.ReportsAnalytics

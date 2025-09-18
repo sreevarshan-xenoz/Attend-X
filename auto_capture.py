@@ -17,9 +17,8 @@ def sanitize_filename(name):
 print("--- Manual Capture Tool (with Rotation Fix) ---")
 
 # 1. Student details-a vaangurom
-roll_number = input("Enter Student Roll Number (e.g., 101): ")
-student_name = input("Enter Student Name (e.g., Nawin Raju): ")
-
+roll_number = input("Enter Student Roll Number (e.g., 61): ")
+student_name = input("Enter Student Name (e.g., Sree Varshan V): ")
 if not roll_number or not student_name:
     print("Error: Roll number and name cannot be empty.")
     exit()

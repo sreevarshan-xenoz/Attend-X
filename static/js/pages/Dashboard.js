@@ -123,6 +123,11 @@ window.Dashboard = () => { // export const Dashboard ku badhila window.Dashboard
           )
         ),
         
+        // Live Feed Section
+        h('div', { className: 'bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-6' },
+          h(window.LiveFeed)
+        ),
+
         // Tables Section
         h('div', { className: 'grid grid-cols-1 lg:grid-cols-2 gap-6' },
           // School Leaderboard
