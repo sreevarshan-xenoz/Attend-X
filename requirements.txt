@@ -3,6 +3,3 @@ insightface
 onnxruntime
 faiss-cpu
 numpy
-flask
-flask-cors
-flask-socketio

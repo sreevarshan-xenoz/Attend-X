@@ -7,7 +7,7 @@ import time
 os.environ["OPENCV_VIDEOIO_PRIORITY_MSMF"] = "0"
 
 # --- Camera Source ---
-video_source = "http://192.168.1.4:4747/video"
+video_source = "http://192.168.29.28:4747/video"
 
 # --- Helper Function: Sariyaana folder name-a create panna ---
 def sanitize_filename(name):
