@@ -6,8 +6,25 @@ import time
 # --- A common fix for OpenCV issues on Windows ---
 os.environ["OPENCV_VIDEOIO_PRIORITY_MSMF"] = "0"
 
-# --- Camera Source ---
-video_source = "http://192.168.29.28:4747/video"
+# --- Camera Source Selection ---
+def get_camera_source():
+    """Get camera source from user input"""
+    print("\n=== Camera Selection ===")
+    print("1. Default Camera (Webcam)")
+    print("2. DroidCam (IP Camera)")
+    
+    while True:
+        choice = input("Select camera source (1 or 2): ").strip()
+        
+        if choice == "1":
+            return 0  # Default camera index
+        elif choice == "2":
+            ip_address = input("Enter DroidCam IP address (default: 192.168.29.28): ").strip()
+            if not ip_address:
+                ip_address = "192.168.29.28"
+            return f"http://{ip_address}:4747/video"
+        else:
+            print("Invalid choice. Please enter 1 or 2.")
 
 # --- Helper Function: Sariyaana folder name-a create panna ---
 def sanitize_filename(name):
@@ -32,7 +49,10 @@ student_folder_path = os.path.join(dataset_folder, folder_name)
 os.makedirs(student_folder_path, exist_ok=True)
 print(f"Saving images to: {student_folder_path}")
 
-# 4. Camera-va open panrom
+# 4. Camera source-a select panrom
+video_source = get_camera_source()
+
+# 5. Camera-va open panrom
 print(f"Trying to open camera at {video_source}...")
 cap = cv2.VideoCapture(video_source)
 
@@ -64,10 +84,9 @@ while True:
         continue
     
     # --- ROTATION FIX ---
-    # Inga dhaan namma sariyaana rotation-a apply panrom.
-    # Unga screenshot-la keela paathu irundhathaala, 180 degree rotate panrom.
-    # Vera phone-ku thevaikkum vaaipu iruku!
-    frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE) # DroidCam-oda default-a 180 degree-ku maathrom
+    # Apply rotation only for DroidCam (IP camera)
+    if isinstance(video_source, str) and "http" in video_source:
+        frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
     
     # Screen-la instructions kaatrom
     display_frame = frame.copy()

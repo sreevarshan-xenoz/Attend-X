@@ -80,6 +80,26 @@ def export_today_attendance():
         print(f"Total records exported: {len(df)}")
         print("-----------------------------------------")
 
+# --- CAMERA SELECTION FUNCTION ---
+def get_camera_source():
+    """Get camera source from user input"""
+    print("\n=== Camera Selection ===")
+    print("1. Default Camera (Webcam)")
+    print("2. DroidCam (IP Camera)")
+    
+    while True:
+        choice = input("Select camera source (1 or 2): ").strip()
+        
+        if choice == "1":
+            return 0  # Default camera index
+        elif choice == "2":
+            ip_address = input("Enter DroidCam IP address (default: 192.168.1.4): ").strip()
+            if not ip_address:
+                ip_address = "192.168.1.4"
+            return f"http://{ip_address}:4747/video"
+        else:
+            print("Invalid choice. Please enter 1 or 2.")
+
 # --- PART 2: MAIN ATTENDANCE LOGIC ---
 
 if __name__ == "__main__":
@@ -96,8 +116,8 @@ if __name__ == "__main__":
     db_names = face_bank['names']
     print("[INFO] AI Model and Face Bank loaded.")
 
-    # --- Camera ---
-    video_source = "http://192.168.1.4:4747/video" 
+    # --- Camera Selection ---
+    video_source = get_camera_source()
     cap = cv2.VideoCapture(video_source)
     if not cap.isOpened():
         print("[ERROR] Could not open camera.")
@@ -114,7 +134,11 @@ if __name__ == "__main__":
     # --- Other Parameters ---
     SIMILARITY_THRESHOLD = 0.5 
     FRAME_SKIP = 4
-    CAMERA_ROTATION_FIX = cv2.ROTATE_90_COUNTERCLOCKWISE 
+    # Set rotation based on camera type
+    if isinstance(video_source, str) and "http" in video_source:
+        CAMERA_ROTATION_FIX = cv2.ROTATE_90_COUNTERCLOCKWISE
+    else:
+        CAMERA_ROTATION_FIX = None 
 
     # --- Main Loop (for 4 minutes) ---
     try:

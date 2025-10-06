@@ -22,7 +22,7 @@ class AttendanceSystem:
     def __init__(self):
         self.DB_FILE = "attendance.db"
         self.SIMILARITY_THRESHOLD = 0.5
-        self.CAMERA_ROTATION = cv2.ROTATE_90_COUNTERCLOCKWISE
+        self.CAMERA_ROTATION = None  # Will be set based on camera type
         self.SYSTEM_DURATION = 10 * 60  # 10 minutes
         
         # Initialize database
@@ -212,8 +212,36 @@ class AttendanceSystem:
         
         return display_frame
     
-    def run(self, video_source="http://192.168.29.28:4747/video"):
+    def get_camera_source(self):
+        """Get camera source from user input"""
+        print("\n=== Camera Selection ===")
+        print("1. Default Camera (Webcam)")
+        print("2. DroidCam (IP Camera)")
+        
+        while True:
+            choice = input("Select camera source (1 or 2): ").strip()
+            
+            if choice == "1":
+                return 0  # Default camera index
+            elif choice == "2":
+                ip_address = input("Enter DroidCam IP address (default: 192.168.29.28): ").strip()
+                if not ip_address:
+                    ip_address = "192.168.29.28"
+                return f"http://{ip_address}:4747/video"
+            else:
+                print("Invalid choice. Please enter 1 or 2.")
+
+    def run(self, video_source=None):
         """Main attendance system loop"""
+        if video_source is None:
+            video_source = self.get_camera_source()
+            
+        # Set rotation based on camera type
+        if isinstance(video_source, str) and "http" in video_source:
+            self.CAMERA_ROTATION = cv2.ROTATE_90_COUNTERCLOCKWISE
+        else:
+            self.CAMERA_ROTATION = None
+            
         print(f"[SYSTEM] Starting attendance system...")
         print(f"[SYSTEM] Video source: {video_source}")
         

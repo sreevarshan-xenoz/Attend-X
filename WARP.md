@@ -16,6 +16,12 @@ styling):
   ```
 
 ### Running Scripts
+- **Web Interface (recommended):**
+  ```sh
+  python app.py
+  ```
+  Starts the Flask web server at http://localhost:5000 with full web interface including live camera feed, dashboard, and reports.
+
 - **Face Bank Creation (enrollment):**
   ```sh
   python create_face_bank.py

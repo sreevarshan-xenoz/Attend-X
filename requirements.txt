@@ -3,3 +3,6 @@ insightface
 onnxruntime
 faiss-cpu
 numpy
+flask
+pandas
+openpyxl

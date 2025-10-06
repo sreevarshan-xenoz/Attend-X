@@ -49,6 +49,26 @@ def mark_attendance(name):
     finally:
         conn.close()
 
+# --- Camera Selection Function ---
+def get_camera_source():
+    """Get camera source from user input"""
+    print("\n=== Camera Selection ===")
+    print("1. Default Camera (Webcam)")
+    print("2. DroidCam (IP Camera)")
+    
+    while True:
+        choice = input("Select camera source (1 or 2): ").strip()
+        
+        if choice == "1":
+            return 0  # Default camera index
+        elif choice == "2":
+            ip_address = input("Enter DroidCam IP address (default: 192.168.1.4): ").strip()
+            if not ip_address:
+                ip_address = "192.168.1.4"
+            return f"http://{ip_address}:4747/video"
+        else:
+            print("Invalid choice. Please enter 1 or 2.")
+
 # --- Main Program Starts Here ---
 
 print("Initializing the Raspberry Pi - Database Attendance System...")
@@ -70,8 +90,8 @@ except Exception as e:
     print(f"Error loading Face Bank: {e}")
     exit()
 
-# --- 3. Camera Source ---
-video_source = "http://192.168.1.4:4747/video" 
+# --- 3. Camera Source Selection ---
+video_source = get_camera_source()
 cap = cv2.VideoCapture(video_source)
 if not cap.isOpened():
     print(f"Error: Could not open video source: {video_source}")
@@ -86,7 +106,11 @@ print("-----------------------------------------")
 SIMILARITY_THRESHOLD = 0.5 
 FRAME_SKIP = 4
 RESIZE_WIDTH = 240
-CAMERA_ROTATION_FIX = cv2.ROTATE_90_COUNTERCLOCKWISE 
+# Set rotation based on camera type
+if isinstance(video_source, str) and "http" in video_source:
+    CAMERA_ROTATION_FIX = cv2.ROTATE_90_COUNTERCLOCKWISE
+else:
+    CAMERA_ROTATION_FIX = None 
 
 # --- 4. Main Loop (Headless Mode) ---
 frame_count = 0

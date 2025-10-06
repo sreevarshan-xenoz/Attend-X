@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - Attendance System{% endblock %}
+
+{% block content %}
+<div x-data="reports()" x-init="init()">
+    <!-- Header -->
+    <div class="mb-8">
+        <h2 class="text-3xl font-bold text-gray-800 mb-2">Attendance Reports</h2>
+        <p class="text-gray-600">View and analyze attendance data</p>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+        <h3 class="text-lg font-semibold mb-4">Filter Reports</h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                <input x-model="startDate" type="date" 
+                       class="w-full border border-gray-300 rounded-md px-3 py-2">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                <input x-model="endDate" type="date" 
+                       class="w-full border border-gray-300 rounded-md px-3 py-2">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Student</label>
+                <select x-model="selectedStudent" class="w-full border border-gray-300 rounded-md px-3 py-2">
+                    <option value="">All Students</option>
+                    <template x-for="student in students" :key="student">
+                        <option :value="student" x-text="student"></option>
+                    </template>
+                </select>
+            </div>
+            
+            <div class="flex items-end">
+                <button @click="loadReports()" 
+                        class="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition">
+                    Generate Report
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6" x-show="reports.length > 0">
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-600">Total Records</p>
+                    <p class="text-2xl font-semibold text-gray-900" x-text="reportStats.total"></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-green-100 text-green-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-600">Present</p>
+                    <p class="text-2xl font-semibold text-gray-900" x-text="reportStats.present"></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-orange-100 text-orange-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-600">Late</p>
+                    <p class="text-2xl font-semibold text-gray-900" x-text="reportStats.late"></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-600">Unique Students</p>
+                    <p class="text-2xl font-semibold text-gray-900" x-text="reportStats.uniqueStudents"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reports Table -->
+    <div class="bg-white rounded-lg shadow">
+        <div class="p-6 border-b flex justify-between items-center">
+            <h3 class="text-lg font-semibold">Attendance Records</h3>
+            <button @click="exportToCSV()" x-show="reports.length > 0"
+                    class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">
+                Export CSV
+            </button>
+        </div>
+        
+        <div class="p-6">
+            <div x-show="loading" class="text-center py-8">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p class="mt-2 text-gray-600">Loading reports...</p>
+            </div>
+            
+            <div x-show="!loading && reports.length === 0" class="text-center py-8 text-gray-500">
+                <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <p>No attendance records found</p>
+                <p class="text-sm">Try adjusting your filter criteria</p>
+            </div>
+            
+            <div x-show="!loading && reports.length > 0" class="overflow-x-auto">
+                <table class="min-w-full">
+                    <thead>
+                        <tr class="border-b">
+                            <th class="text-left py-3 px-4">Date</th>
+                            <th class="text-left py-3 px-4">Student Name</th>
+                            <th class="text-left py-3 px-4">Time</th>
+                            <th class="text-left py-3 px-4">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="record in paginatedReports" :key="record.date + record.name + record.time">
+                            <tr class="border-b hover:bg-gray-50">
+                                <td class="py-3 px-4" x-text="formatDate(record.date)"></td>
+                                <td class="py-3 px-4 font-medium" x-text="record.name"></td>
+                                <td class="py-3 px-4" x-text="record.time"></td>
+                                <td class="py-3 px-4">
+                                    <span :class="record.status === 'Present' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'" 
+                                          class="px-2 py-1 rounded text-sm" x-text="record.status"></span>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+                
+                <!-- Pagination -->
+                <div class="flex justify-between items-center mt-6" x-show="totalPages > 1">
+                    <div class="text-sm text-gray-600">
+                        Showing <span x-text="(currentPage - 1) * recordsPerPage + 1"></span> to 
+                        <span x-text="Math.min(currentPage * recordsPerPage, reports.length)"></span> of 
+                        <span x-text="reports.length"></span> records
+                    </div>
+                    <div class="flex space-x-2">
+                        <button @click="currentPage = Math.max(1, currentPage - 1)" 
+                                :disabled="currentPage === 1"
+                                class="px-3 py-1 border rounded disabled:opacity-50">
+                            Previous
+                        </button>
+                        <template x-for="page in Array.from({length: totalPages}, (_, i) => i + 1)" :key="page">
+                            <button @click="currentPage = page" 
+                                    :class="currentPage === page ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'"
+                                    class="px-3 py-1 border rounded">
+                                <span x-text="page"></span>
+                            </button>
+                        </template>
+                        <button @click="currentPage = Math.min(totalPages, currentPage + 1)" 
+                                :disabled="currentPage === totalPages"
+                                class="px-3 py-1 border rounded disabled:opacity-50">
+                            Next
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function reports() {
+    return {
+        startDate: '',
+        endDate: '',
+        selectedStudent: '',
+        students: [],
+        reports: [],
+        loading: false,
+        currentPage: 1,
+        recordsPerPage: 20,
+        
+        init() {
+            // Set default dates (last 7 days)
+            const today = new Date();
+            const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+            
+            this.endDate = today.toISOString().split('T')[0];
+            this.startDate = weekAgo.toISOString().split('T')[0];
+            
+            this.loadStudents();
+            this.loadReports();
+        },
+        
+        async loadStudents() {
+            try {
+                const response = await fetch('/api/students');
+                const data = await response.json();
+                this.students = data.students;
+            } catch (error) {
+                console.error('Error loading students:', error);
+            }
+        },
+        
+        async loadReports() {
+            this.loading = true;
+            try {
+                const params = new URLSearchParams({
+                    start_date: this.startDate,
+                    end_date: this.endDate
+                });
+                
+                const response = await fetch(`/api/attendance/range?${params}`);
+                const data = await response.json();
+                
+                let filteredReports = data.records;
+                
+                // Filter by student if selected
+                if (this.selectedStudent) {
+                    filteredReports = filteredReports.filter(record => 
+                        record.name === this.selectedStudent
+                    );
+                }
+                
+                this.reports = filteredReports;
+                this.currentPage = 1;
+            } catch (error) {
+                console.error('Error loading reports:', error);
+            } finally {
+                this.loading = false;
+            }
+        },
+        
+        get reportStats() {
+            const stats = {
+                total: this.reports.length,
+                present: this.reports.filter(r => r.status === 'Present').length,
+                late: this.reports.filter(r => r.status === 'Late').length,
+                uniqueStudents: new Set(this.reports.map(r => r.name)).size
+            };
+            return stats;
+        },
+        
+        get totalPages() {
+            return Math.ceil(this.reports.length / this.recordsPerPage);
+        },
+        
+        get paginatedReports() {
+            const start = (this.currentPage - 1) * this.recordsPerPage;
+            const end = start + this.recordsPerPage;
+            return this.reports.slice(start, end);
+        },
+        
+        formatDate(dateStr) {
+            return new Date(dateStr).toLocaleDateString();
+        },
+        
+        exportToCSV() {
+            const headers = ['Date', 'Student Name', 'Time', 'Status'];
+            const csvContent = [
+                headers.join(','),
+                ...this.reports.map(record => [
+                    record.date,
+                    `"${record.name}"`,
+                    record.time,
+                    record.status
+                ].join(','))
+            ].join('\n');
+            
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `attendance_report_${this.startDate}_to_${this.endDate}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+    }
+}
+</script>
+{% endblock %}
