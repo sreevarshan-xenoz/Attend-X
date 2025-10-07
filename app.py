@@ -353,7 +353,7 @@ def video_feed():
 @app.route('/api/attendance/today')
 def get_today_attendance():
     """Get today's attendance summary"""
-    conn = sqlite3.connect('attendance.db')
+    conn = sqlite3.connect('attendance.db', check_same_thread=False)
     cursor = conn.cursor()
     today = datetime.now().strftime("%Y-%m-%d")
     
@@ -404,7 +404,7 @@ def get_attendance_range():
     if not start_date or not end_date:
         return jsonify({'error': 'Start date and end date required'}), 400
     
-    conn = sqlite3.connect('attendance.db')
+    conn = sqlite3.connect('attendance.db', check_same_thread=False)
     cursor = conn.cursor()
     
     cursor.execute("""

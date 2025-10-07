@@ -296,6 +296,7 @@ class AttendanceSystem:
             display_frame = self.draw_recognitions(frame, recognitions, current_status)
             
             # Add system info overlay
+            elapsed_time = time.time() - start_time
             time_remaining = int(self.SYSTEM_DURATION - elapsed_time)
             info_text = f"Status: {current_status} | Time: {time_remaining//60}:{time_remaining%60:02d}"
             cv2.putText(display_frame, info_text, (10, 30), 
