@@ -23,8 +23,86 @@ app = Flask(__name__)
 # Global variables for camera stream
 camera = None
 attendance_system = None
+enrollment_system = None
 streaming = False
 stream_thread = None
+
+class WebEnrollmentSystem:
+    def __init__(self):
+        self.cap = None
+        self.student_folder = None
+        self.image_count = 0
+        self.CAMERA_ROTATION = None
+        
+    def start_capture(self, roll_number, student_name, video_source):
+        """Start capture session for student enrollment"""
+        import re
+        import os
+        
+        # Sanitize folder name
+        def sanitize_filename(name):
+            return re.sub(r'[^a-zA-Z0-9_]', '', name.replace(' ', '_'))
+        
+        # Create folder structure
+        folder_name = f"{roll_number}_{sanitize_filename(student_name)}"
+        dataset_folder = 'student_dataset'
+        self.student_folder = os.path.join(dataset_folder, folder_name)
+        
+        # Create directories
+        os.makedirs(self.student_folder, exist_ok=True)
+        
+        # Count existing images
+        self.image_count = len([f for f in os.listdir(self.student_folder) if f.endswith(('.jpg', '.jpeg', '.png'))])
+        
+        # Start camera
+        self.cap = cv2.VideoCapture(video_source)
+        
+        if self.cap.isOpened():
+            # Optimize camera settings
+            self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            
+            # Set rotation based on camera type
+            if isinstance(video_source, str) and "http" in video_source:
+                self.CAMERA_ROTATION = cv2.ROTATE_90_COUNTERCLOCKWISE
+            else:
+                self.CAMERA_ROTATION = None
+                
+            return True
+        return False
+    
+    def get_frame(self):
+        """Get current frame for enrollment"""
+        if not self.cap or not self.cap.isOpened():
+            return None
+            
+        ret, frame = self.cap.read()
+        if not ret:
+            return None
+            
+        # Apply rotation if needed
+        if self.CAMERA_ROTATION is not None:
+            frame = cv2.rotate(frame, self.CAMERA_ROTATION)
+            
+        return frame
+    
+    def capture_image(self):
+        """Capture and save current frame"""
+        frame = self.get_frame()
+        if frame is not None and self.student_folder:
+            self.image_count += 1
+            image_name = f"image_{self.image_count}.jpg"
+            image_path = os.path.join(self.student_folder, image_name)
+            cv2.imwrite(image_path, frame)
+            return True, self.image_count
+        return False, self.image_count
+    
+    def stop_capture(self):
+        """Stop capture session"""
+        if self.cap:
+            self.cap.release()
+            self.cap = None
 
 class WebAttendanceSystem(AttendanceSystem):
     def __init__(self):
@@ -194,6 +272,11 @@ def reports():
     """Reports page"""
     return render_template('reports.html')
 
+@app.route('/enroll')
+def enroll():
+    """Student enrollment page"""
+    return render_template('enroll.html')
+
 @app.route('/api/camera/start', methods=['POST'])
 def start_camera():
     """Start camera stream"""
@@ -233,10 +316,17 @@ def stop_camera():
 
 def generate_frames():
     """Generate frames for video stream with optimized encoding"""
-    global attendance_system, streaming
+    global attendance_system, enrollment_system, streaming
     
-    while streaming and attendance_system:
-        frame = attendance_system.get_frame()
+    while streaming:
+        frame = None
+        
+        # Get frame from active system
+        if attendance_system:
+            frame = attendance_system.get_frame()
+        elif enrollment_system:
+            frame = enrollment_system.get_frame()
+            
         if frame is not None:
             # Resize frame for web streaming to reduce bandwidth
             height, width = frame.shape[:2]
@@ -391,6 +481,96 @@ def get_face_events():
         return jsonify({'events': events})
     else:
         return jsonify({'events': []})
+
+@app.route('/api/enrollment/start', methods=['POST'])
+def start_enrollment():
+    """Start student enrollment session"""
+    global enrollment_system, streaming
+    
+    data = request.get_json()
+    roll_number = data.get('roll_number')
+    student_name = data.get('student_name')
+    camera_type = data.get('camera_type', '0')
+    ip_address = data.get('ip_address', '192.168.29.28')
+    
+    if not roll_number or not student_name:
+        return jsonify({'success': False, 'message': 'Roll number and student name are required'})
+    
+    # Determine video source
+    if camera_type == '0':
+        video_source = 0
+    else:
+        video_source = f"http://{ip_address}:4747/video"
+    
+    try:
+        # Stop attendance system if running
+        if streaming and attendance_system:
+            attendance_system.stop_camera()
+        
+        enrollment_system = WebEnrollmentSystem()
+        if enrollment_system.start_capture(roll_number, student_name, video_source):
+            streaming = True
+            return jsonify({
+                'success': True, 
+                'message': f'Enrollment started for {student_name}',
+                'existing_count': enrollment_system.image_count
+            })
+        else:
+            return jsonify({'success': False, 'message': 'Failed to connect to camera'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/enrollment/stop', methods=['POST'])
+def stop_enrollment():
+    """Stop enrollment session"""
+    global enrollment_system, streaming
+    
+    streaming = False
+    if enrollment_system:
+        enrollment_system.stop_capture()
+        count = enrollment_system.image_count
+        enrollment_system = None
+        return jsonify({'success': True, 'message': f'Enrollment stopped. {count} images captured.'})
+    
+    return jsonify({'success': True, 'message': 'Enrollment stopped'})
+
+@app.route('/api/enrollment/capture', methods=['POST'])
+def capture_enrollment_image():
+    """Capture image for enrollment"""
+    global enrollment_system
+    
+    if not enrollment_system:
+        return jsonify({'success': False, 'message': 'Enrollment session not active'})
+    
+    success, count = enrollment_system.capture_image()
+    if success:
+        return jsonify({'success': True, 'message': f'Image captured successfully', 'count': count})
+    else:
+        return jsonify({'success': False, 'message': 'Failed to capture image'})
+
+@app.route('/api/enrollment/rebuild', methods=['POST'])
+def rebuild_face_bank():
+    """Rebuild face bank with new enrollments"""
+    try:
+        import subprocess
+        import os
+        
+        # Run the face bank creation script
+        result = subprocess.run(['python', 'create_face_bank.py'], 
+                              capture_output=True, text=True, cwd=os.getcwd())
+        
+        if result.returncode == 0:
+            return jsonify({
+                'success': True, 
+                'message': 'Face bank rebuilt successfully! New students are now enrolled.'
+            })
+        else:
+            return jsonify({
+                'success': False, 
+                'message': f'Error rebuilding face bank: {result.stderr}'
+            })
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'})
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
