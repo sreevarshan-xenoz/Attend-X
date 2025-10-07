@@ -35,7 +35,11 @@ for student_folder in os.listdir(dataset_path):
                 print(f"Warning: Could not read image {image_path}. Skipping.")
                 continue
 
-            faces = app.get(img)
+            try:
+                faces = app.get(img)
+            except Exception as e:
+                print(f"Warning: Face detection failed for {image_path}: {e}. Skipping.")
+                continue
             
             if len(faces) == 1:
                 embedding = faces[0].embedding

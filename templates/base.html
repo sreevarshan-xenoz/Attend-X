@@ -6,17 +6,69 @@
     <title>{% block title %}Attendance System{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <style>
+        /* Custom styles for better mobile experience */
+        @media (max-width: 768px) {
+            .video-container {
+                max-height: 60vh;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* Smooth transitions */
+        .transition-all {
+            transition: all 0.3s ease;
+        }
+        
+        /* Loading animation */
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .animate-pulse-slow {
+            animation: pulse-slow 2s infinite;
+        }
+        
+        /* Video feed improvements */
+        .video-feed {
+            background: linear-gradient(45deg, #1f2937, #374151);
+        }
+    </style>
 </head>
 <body class="bg-gray-100">
     <!-- Navigation -->
-    <nav class="bg-blue-600 text-white p-4">
-        <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-xl font-bold">Face Recognition Attendance</h1>
-            <div class="space-x-4">
-                <a href="/" class="hover:text-blue-200">Dashboard</a>
-                <a href="/live" class="hover:text-blue-200">Live Attendance</a>
-                <a href="/enroll" class="hover:text-blue-200">Enroll Student</a>
-                <a href="/reports" class="hover:text-blue-200">Reports</a>
+    <nav class="bg-blue-600 text-white p-4" x-data="{ mobileMenuOpen: false }">
+        <div class="container mx-auto">
+            <div class="flex justify-between items-center">
+                <h1 class="text-xl font-bold">Face Recognition Attendance</h1>
+                
+                <!-- Desktop Menu -->
+                <div class="hidden md:flex space-x-4">
+                    <a href="/" class="hover:text-blue-200 transition">Dashboard</a>
+                    <a href="/live" class="hover:text-blue-200 transition">Live Attendance</a>
+                    <a href="/enroll" class="hover:text-blue-200 transition">Enroll Student</a>
+                    <a href="/reports" class="hover:text-blue-200 transition">Reports</a>
+                </div>
+                
+                <!-- Mobile Menu Button -->
+                <button @click="mobileMenuOpen = !mobileMenuOpen" class="md:hidden">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path x-show="!mobileMenuOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        <path x-show="mobileMenuOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Mobile Menu -->
+            <div x-show="mobileMenuOpen" x-transition class="md:hidden mt-4 space-y-2">
+                <a href="/" class="block hover:text-blue-200 transition py-2">Dashboard</a>
+                <a href="/live" class="block hover:text-blue-200 transition py-2">Live Attendance</a>
+                <a href="/enroll" class="block hover:text-blue-200 transition py-2">Enroll Student</a>
+                <a href="/reports" class="block hover:text-blue-200 transition py-2">Reports</a>
             </div>
         </div>
     </nav>

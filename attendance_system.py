@@ -18,12 +18,22 @@ except ImportError as e:
     print(f"[WARNING] Face recognition libraries not available: {e}")
     print("[INFO] Running in camera-only mode for testing")
 
+class DatabaseManager:
+    """Simple database connection manager"""
+    def __init__(self, db_file):
+        self.db_file = db_file
+    
+    def get_connection(self):
+        """Get a database connection"""
+        return sqlite3.connect(self.db_file, check_same_thread=False)
+
 class AttendanceSystem:
     def __init__(self):
         self.DB_FILE = "attendance.db"
         self.SIMILARITY_THRESHOLD = 0.5
         self.CAMERA_ROTATION = None  # Will be set based on camera type
         self.SYSTEM_DURATION = 10 * 60  # 10 minutes
+        self.db_manager = DatabaseManager(self.DB_FILE)
         
         # Initialize database
         self.setup_database()
@@ -45,7 +55,7 @@ class AttendanceSystem:
     
     def setup_database(self):
         """Initialize SQLite database for attendance records"""
-        conn = sqlite3.connect(self.DB_FILE, check_same_thread=False)
+        conn = self.db_manager.get_connection()
         cursor = conn.cursor()
         cursor.execute('''CREATE TABLE IF NOT EXISTS attendance (
             id INTEGER PRIMARY KEY, 
@@ -73,7 +83,7 @@ class AttendanceSystem:
     
     def save_attendance(self, student_name, status):
         """Save attendance record to database"""
-        conn = sqlite3.connect(self.DB_FILE, check_same_thread=False)
+        conn = self.db_manager.get_connection()
         cursor = conn.cursor()
         today = datetime.now().strftime("%Y-%m-%d")
         current_time = datetime.now().strftime("%H:%M:%S")
@@ -94,7 +104,7 @@ class AttendanceSystem:
     
     def get_today_summary(self):
         """Get today's attendance summary"""
-        conn = sqlite3.connect(self.DB_FILE, check_same_thread=False)
+        conn = self.db_manager.get_connection()
         cursor = conn.cursor()
         today = datetime.now().strftime("%Y-%m-%d")
         
@@ -115,15 +125,24 @@ class AttendanceSystem:
         
         return summary
     
+    def get_current_status(self):
+        """Consistent status determination based on time"""
+        current_hour = datetime.now().hour
+        return "Present" if current_hour < 12 else "Late"
+    
     def recognize_face(self, frame):
         """Process frame and recognize faces"""
         if not FACE_RECOGNITION_AVAILABLE:
             # Demo mode - simulate face detection with OpenCV
             return self.demo_face_detection(frame)
         
-        # Process faces in smaller frame for speed
-        small_frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
-        faces = self.ai_app.get(small_frame)
+        try:
+            # Process faces in smaller frame for speed
+            small_frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
+            faces = self.ai_app.get(small_frame)
+        except Exception as e:
+            print(f"[ERROR] Face detection failed: {e}")
+            return []
         
         recognitions = []
         
@@ -141,7 +160,7 @@ class AttendanceSystem:
             similarity = distances[0][0]
             match_index = indices[0][0]
             
-            if similarity > self.SIMILARITY_THRESHOLD:
+            if similarity >= self.SIMILARITY_THRESHOLD:
                 recognized_name = self.db_names[match_index]
                 recognitions.append({
                     'name': recognized_name,
@@ -258,9 +277,8 @@ class AttendanceSystem:
         start_time = time.time()
         
         while (time.time() - start_time) < self.SYSTEM_DURATION:
-            # Determine current status based on time
-            elapsed_time = time.time() - start_time
-            current_status = "Present" if elapsed_time < (5 * 60) else "Late"
+            # Determine current status based on time (consistent with web app)
+            current_status = self.get_current_status()
             
             ret, frame = cap.read()
             if not ret:
@@ -289,7 +307,6 @@ class AttendanceSystem:
             # Save attendance for recognized faces
             for recognition in recognitions:
                 self.save_attendance(recognition['name'], current_status)
-                time.sleep(1)  # Brief pause after recognition
             
             # Handle key presses
             key = cv2.waitKey(1) & 0xFF

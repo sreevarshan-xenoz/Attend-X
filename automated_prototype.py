@@ -172,7 +172,7 @@ if __name__ == "__main__":
                 similarity_score = D[0][0]
                 match_index = I[0][0]
                 
-                if similarity_score > SIMILARITY_THRESHOLD:
+                if similarity_score >= SIMILARITY_THRESHOLD:
                     recognized_name = db_names[match_index]
                     mark_attendance(recognized_name, current_status)
                     time.sleep(5) 

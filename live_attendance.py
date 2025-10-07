@@ -75,7 +75,7 @@ while True:
         name_to_display = "Unknown"
         color = (0, 0, 255) # Red for Unknown
         
-        if similarity_score > RECOGNITION_THRESHOLD:
+        if similarity_score >= RECOGNITION_THRESHOLD:
             name_to_display = db_names[match_index]
             color = (0, 255, 0) # Green for known
         

@@ -31,29 +31,37 @@
         </div>
 
         <!-- Camera Settings -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Camera Type</label>
-                <select x-model="cameraType" class="w-full border border-gray-300 rounded-md px-3 py-2"
+                <select x-model="cameraType" class="w-full border border-gray-300 rounded-md px-3 py-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
                         :disabled="isCapturing">
                     <option value="0">Default Camera (Webcam)</option>
                     <option value="1">DroidCam (IP Camera)</option>
                 </select>
             </div>
             
-            <div x-show="cameraType === '1'">
+            <div x-show="cameraType === '1'" x-transition>
                 <label class="block text-sm font-medium text-gray-700 mb-2">IP Address</label>
                 <input x-model="ipAddress" type="text" placeholder="192.168.29.28" 
-                       class="w-full border border-gray-300 rounded-md px-3 py-2"
+                       class="w-full border border-gray-300 rounded-md px-3 py-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
                        :disabled="isCapturing">
             </div>
             
             <div class="flex items-end">
-                <button @click="toggleCapture()" 
-                        :disabled="!rollNumber || !studentName"
+                <button @click="toggleCapture()" :disabled="(!rollNumber || !studentName) || isConnecting"
                         :class="isCapturing ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'"
-                        class="w-full text-white py-2 px-4 rounded transition disabled:opacity-50 disabled:cursor-not-allowed">
-                    <span x-text="isCapturing ? 'Stop Capture' : 'Start Capture'"></span>
+                        class="w-full text-white py-2 px-4 rounded transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+                    <div x-show="isConnecting" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    <span x-text="isConnecting ? 'Connecting...' : (isCapturing ? 'Stop Capture' : 'Start Capture')"></span>
+                </button>
+            </div>
+            
+            <div class="flex items-end">
+                <button @click="captureImage()" :disabled="!isCapturing || isCapturingImage"
+                        class="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+                    <div x-show="isCapturingImage" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    <span x-text="isCapturingImage ? 'Capturing...' : 'Quick Capture'"></span>
                 </button>
             </div>
         </div>
@@ -90,28 +98,42 @@
                     
                     <!-- Video Feed -->
                     <div x-show="isCapturing" class="relative">
-                        <img src="/video_feed" class="w-full rounded-lg" alt="Capture Feed">
+                        <div class="relative bg-black rounded-lg overflow-hidden" style="aspect-ratio: 4/3;">
+                            <img src="/video_feed" class="w-full h-full object-contain" alt="Capture Feed"
+                                 @load="videoLoaded = true" @error="videoError = true">
+                        </div>
                         
                         <!-- Capture Instructions Overlay -->
-                        <div class="absolute top-4 left-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg">
-                            <div class="text-sm font-medium">Press 'C' to capture image</div>
+                        <div class="absolute top-4 left-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-10">
+                            <div class="text-sm font-medium">Press 'C' or click button to capture</div>
+                        </div>
+                        
+                        <!-- Capture Count Overlay -->
+                        <div class="absolute top-4 right-4 bg-green-500 text-white px-3 py-2 rounded-lg shadow-lg z-10">
+                            <div class="text-sm font-medium" x-text="`${capturedCount} captured`"></div>
                         </div>
                         
                         <!-- Face Detection Guide -->
-                        <div class="absolute inset-0 pointer-events-none">
+                        <div class="absolute inset-0 pointer-events-none z-5">
                             <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 
-                                        w-48 h-64 border-2 border-green-400 border-dashed rounded-lg"></div>
+                                        w-48 h-64 border-2 border-green-400 border-dashed rounded-lg opacity-75">
+                                <div class="absolute -top-6 left-1/2 transform -translate-x-1/2 text-green-400 text-xs font-medium">
+                                    Position face here
+                                </div>
+                            </div>
                         </div>
                         
                         <!-- Capture Button -->
-                        <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-                            <button @click="captureImage()" 
-                                    class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-full shadow-lg transition">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
+                            <button @click="captureImage()" :disabled="isCapturingImage"
+                                    class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-full shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
+                                <div x-show="isCapturingImage" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                <svg x-show="!isCapturingImage" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                                           d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                 </svg>
+                                <span x-show="!isCapturingImage" class="ml-2">Capture</span>
                             </button>
                         </div>
                     </div>
@@ -203,6 +225,10 @@ function enrollment() {
         cameraType: '0',
         ipAddress: '192.168.29.28',
         isCapturing: false,
+        isConnecting: false,
+        isCapturingImage: false,
+        videoLoaded: false,
+        videoError: false,
         capturedCount: 0,
         message: '',
         messageType: 'info',
@@ -232,6 +258,10 @@ function enrollment() {
                 return;
             }
             
+            this.isConnecting = true;
+            this.videoLoaded = false;
+            this.videoError = false;
+            
             try {
                 const response = await fetch('/api/enrollment/start', {
                     method: 'POST',
@@ -252,11 +282,18 @@ function enrollment() {
                     this.isCapturing = true;
                     this.capturedCount = data.existing_count || 0;
                     this.showMessage('success', data.message);
+                    
+                    // Wait for video feed to start
+                    setTimeout(() => {
+                        this.videoLoaded = true;
+                    }, 2000);
                 } else {
                     this.showMessage('error', data.message);
                 }
             } catch (error) {
                 this.showMessage('error', 'Error starting capture: ' + error.message);
+            } finally {
+                this.isConnecting = false;
             }
         },
         
@@ -275,7 +312,9 @@ function enrollment() {
         },
         
         async captureImage() {
-            if (!this.isCapturing) return;
+            if (!this.isCapturing || this.isCapturingImage) return;
+            
+            this.isCapturingImage = true;
             
             try {
                 const response = await fetch('/api/enrollment/capture', {
@@ -287,11 +326,22 @@ function enrollment() {
                 if (data.success) {
                     this.capturedCount = data.count;
                     this.showMessage('success', `Image ${data.count} captured!`);
+                    
+                    // Visual feedback
+                    const captureBtn = document.querySelector('button[onclick*="captureImage"]');
+                    if (captureBtn) {
+                        captureBtn.classList.add('animate-pulse');
+                        setTimeout(() => {
+                            captureBtn.classList.remove('animate-pulse');
+                        }, 500);
+                    }
                 } else {
                     this.showMessage('error', data.message);
                 }
             } catch (error) {
                 this.showMessage('error', 'Error capturing image: ' + error.message);
+            } finally {
+                this.isCapturingImage = false;
             }
         },
         

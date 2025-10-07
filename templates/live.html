@@ -14,26 +14,35 @@
     <div class="bg-white rounded-lg shadow p-6 mb-6">
         <h3 class="text-lg font-semibold mb-4">Camera Settings</h3>
         
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Camera Type</label>
-                <select x-model="cameraType" class="w-full border border-gray-300 rounded-md px-3 py-2">
+                <select x-model="cameraType" :disabled="isStreaming" 
+                        class="w-full border border-gray-300 rounded-md px-3 py-2 disabled:bg-gray-100 disabled:cursor-not-allowed">
                     <option value="0">Default Camera (Webcam)</option>
                     <option value="1">DroidCam (IP Camera)</option>
                 </select>
             </div>
             
-            <div x-show="cameraType === '1'">
+            <div x-show="cameraType === '1'" x-transition>
                 <label class="block text-sm font-medium text-gray-700 mb-2">IP Address</label>
-                <input x-model="ipAddress" type="text" placeholder="192.168.29.28" 
-                       class="w-full border border-gray-300 rounded-md px-3 py-2">
+                <input x-model="ipAddress" type="text" placeholder="192.168.29.28" :disabled="isStreaming"
+                       class="w-full border border-gray-300 rounded-md px-3 py-2 disabled:bg-gray-100 disabled:cursor-not-allowed">
             </div>
             
             <div class="flex items-end">
-                <button @click="toggleCamera()" 
+                <button @click="toggleCamera()" :disabled="isConnecting"
                         :class="isStreaming ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'"
-                        class="w-full text-white py-2 px-4 rounded transition">
-                    <span x-text="isStreaming ? 'Stop Camera' : 'Start Camera'"></span>
+                        class="w-full text-white py-2 px-4 rounded transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+                    <div x-show="isConnecting" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    <span x-text="isConnecting ? 'Connecting...' : (isStreaming ? 'Stop Camera' : 'Start Camera')"></span>
+                </button>
+            </div>
+            
+            <div class="flex items-end">
+                <button @click="refreshData()" :disabled="!isStreaming"
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    Refresh Stats
                 </button>
             </div>
         </div>
@@ -92,11 +101,38 @@
                     
                     <!-- Video Feed with Overlay -->
                     <div x-show="isStreaming" class="relative">
-                        <img src="/video_feed" class="w-full rounded-lg" alt="Live Feed">
+                        <div class="relative bg-black rounded-lg overflow-hidden" style="aspect-ratio: 4/3;">
+                            <img src="/video_feed" class="w-full h-full object-contain" alt="Live Feed" 
+                                 @load="videoLoaded = true" @error="videoError = true">
+                            
+                            <!-- Loading overlay -->
+                            <div x-show="!videoLoaded && !videoError" 
+                                 class="absolute inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center">
+                                <div class="text-center text-white">
+                                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
+                                    <p class="text-sm">Loading camera feed...</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Error overlay -->
+                            <div x-show="videoError" 
+                                 class="absolute inset-0 bg-red-900 bg-opacity-75 flex items-center justify-center">
+                                <div class="text-center text-white">
+                                    <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                    </svg>
+                                    <p class="text-sm">Camera feed error</p>
+                                    <button @click="retryCamera()" class="mt-2 px-3 py-1 bg-red-600 rounded text-xs hover:bg-red-700">
+                                        Retry
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                         
                         <!-- Face Detection Overlay -->
                         <div x-show="performance.faces_detected > 0" 
-                             class="absolute top-4 left-4 bg-green-500 text-white px-3 py-2 rounded-lg shadow-lg animate-pulse">
+                             class="absolute top-4 left-4 bg-green-500 text-white px-3 py-2 rounded-lg shadow-lg animate-pulse z-10">
                             <div class="flex items-center space-x-2">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
@@ -107,13 +143,13 @@
                         </div>
                         
                         <!-- Recording Indicator -->
-                        <div class="absolute top-4 right-4 flex items-center space-x-2">
+                        <div class="absolute top-4 right-4 flex items-center space-x-2 z-10">
                             <div class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                            <span class="text-white bg-black bg-opacity-50 px-2 py-1 rounded text-sm">LIVE</span>
+                            <span class="text-white bg-black bg-opacity-75 px-2 py-1 rounded text-sm font-medium">LIVE</span>
                         </div>
                         
                         <!-- Status Indicator -->
-                        <div class="absolute bottom-4 left-4">
+                        <div class="absolute bottom-4 left-4 z-10">
                             <div :class="currentStatus === 'Present' ? 'bg-green-500' : 'bg-orange-500'" 
                                  class="text-white px-3 py-2 rounded-lg shadow-lg">
                                 <span class="font-medium" x-text="`Status: ${currentStatus}`"></span>
@@ -226,6 +262,9 @@
 function liveAttendance() {
     return {
         isStreaming: false,
+        isConnecting: false,
+        videoLoaded: false,
+        videoError: false,
         cameraType: '0',
         ipAddress: '192.168.29.28',
         message: '',
@@ -277,6 +316,10 @@ function liveAttendance() {
         },
         
         async startCamera() {
+            this.isConnecting = true;
+            this.videoLoaded = false;
+            this.videoError = false;
+            
             try {
                 const response = await fetch('/api/camera/start', {
                     method: 'POST',
@@ -295,6 +338,11 @@ function liveAttendance() {
                     this.isStreaming = true;
                     this.message = data.message;
                     this.messageType = 'success';
+                    
+                    // Wait a bit for video feed to start
+                    setTimeout(() => {
+                        this.videoLoaded = true;
+                    }, 2000);
                 } else {
                     this.message = data.message;
                     this.messageType = 'error';
@@ -302,6 +350,18 @@ function liveAttendance() {
             } catch (error) {
                 this.message = 'Error starting camera: ' + error.message;
                 this.messageType = 'error';
+            } finally {
+                this.isConnecting = false;
+            }
+        },
+        
+        retryCamera() {
+            this.videoError = false;
+            this.videoLoaded = false;
+            // Force reload the video feed
+            const img = document.querySelector('img[src="/video_feed"]');
+            if (img) {
+                img.src = '/video_feed?' + new Date().getTime();
             }
         },
         

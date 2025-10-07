@@ -141,7 +141,7 @@ try:
                 similarity_score = D[0][0]
                 match_index = I[0][0]
                 
-                if similarity_score > SIMILARITY_THRESHOLD:
+                if similarity_score >= SIMILARITY_THRESHOLD:
                     recognized_name = db_names[match_index]
                     
                     # --- ACTION: Mark attendance in SQLite DB ---

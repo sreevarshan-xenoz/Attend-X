@@ -154,9 +154,8 @@ class WebAttendanceSystem(AttendanceSystem):
         
         # Only process face recognition every N frames to reduce lag
         if self.frame_count % self.process_every_n_frames == 0:
-            # Get current status based on time
-            current_hour = datetime.now().hour
-            current_status = "Present" if current_hour < 12 else "Late"
+            # Get current status based on time (consistent with CLI)
+            current_status = self.get_current_status()
             
             # Recognize faces on smaller frame for speed
             small_frame = cv2.resize(frame, (320, 240))
@@ -175,7 +174,7 @@ class WebAttendanceSystem(AttendanceSystem):
         
         # Always draw the last known recognitions for smooth display
         display_frame = self.draw_recognitions(frame, self.last_recognitions, 
-                                             "Present" if datetime.now().hour < 12 else "Late")
+                                             self.get_current_status())
             
         return display_frame
     
@@ -212,7 +211,7 @@ class WebAttendanceSystem(AttendanceSystem):
                 similarity = distances[0][0]
                 match_index = indices[0][0]
                 
-                if similarity > self.SIMILARITY_THRESHOLD:
+                if similarity >= self.SIMILARITY_THRESHOLD:
                     recognized_name = self.db_names[match_index]
                     recognitions.append({
                         'name': recognized_name,
@@ -476,7 +475,7 @@ def get_face_events():
                 'name': recognition['name'],
                 'confidence': recognition['confidence'],
                 'timestamp': datetime.now().isoformat(),
-                'status': "Present" if datetime.now().hour < 12 else "Late"
+                'status': attendance_system.get_current_status() if attendance_system else "Present"
             })
         return jsonify({'events': events})
     else:
